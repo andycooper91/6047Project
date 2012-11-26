@@ -14,10 +14,10 @@ def seqalignDP(seq1,seq2,subst_matrix,gap_pen):
 
     # initialize dynamic programming table for Needleman-Wunsch alignment (Durbin p.20)
     for i in range(1,len(seq1)+1):
-        F[i][0] = 0 + i*gap_pen
+        F[i][0] = 0 - i*gap_pen
         TB[i][0] = PTR_GAP2 # indicates a gap in seq2
     for j in range(1,len(seq2)+1):
-        F[0][j] = 0 + j*gap_pen
+        F[0][j] = 0 - j*gap_pen
         TB[0][j] = PTR_GAP1 # indicates a gap in seq1
 
 
@@ -40,7 +40,7 @@ def seqalignDP(seq1,seq2,subst_matrix,gap_pen):
             insert = F[i][j-1] - gap_pen
             
             F[i][j] = max(match, insert, delete)
-            print str(i) + " " + str(j) + " " + str(F[i][j])
+            ##print str(i) + " " + str(j) + " " + str(F[i][j])
             if F[i][j] == match:
                 TB[i][j] = PTR_BASE
             elif F[i][j] == delete:
