@@ -121,8 +121,10 @@ def main(arg1, arg2):
 ##    file1 = sys.argv[1]
 ##    file2 = sys.argv[2]
 
-    seq1 = readSeq(arg1)
-    seq2 = readSeq(arg2)
+##    seq1 = readSeq(arg1)
+##    seq2 = readSeq(arg2)
+    seq1 = "TTTTTTT"
+    seq2 = "TTTTTTT"
 ##    seq1 = "AGGTGAT"
 ##    seq2 = "AGTAA"
 ##    seq1 = arg1
@@ -133,6 +135,13 @@ def main(arg1, arg2):
     print >> sys.stderr, score
 
     s1, s2 = traceback(seq1,seq2,TB)
+
+    max_score = (min(len(seq1), len(seq2)) * 3) - ((abs(len(seq1)-len(seq2))) * gap_pen)
+    min_score = (min(len(seq1), len(seq2)) * -2) - ((abs(len(seq1)-len(seq2))) * gap_pen)
+    max_score += float(abs(min_score))
+    score += float(abs(min_score))
+    print "Normalized score: " + str(score/max_score)
+    
     print s1
     print s2
 
