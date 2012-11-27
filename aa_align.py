@@ -101,6 +101,60 @@ def readSeq(filename):
 
     return "".join(seq)
 
+def maxScore(aa1, aa2):
+    # for each elt in the shorter sequence, look up the perfect match
+    # subtract gap penalties for difference in length
+    if len(aa1) == len(aa2):
+        score1 = calcMax(aa1)
+        score2 = calcMax(aa2)
+        print "MAX: Lengths equal. Scores " + str(score1) + " and " + str(score2)
+        return max(score1, score2)
+    else:
+        diffL = abs(len(aa1) - len(aa2))
+        if len(aa1) < len(aa2):
+            score = calcMax(aa1) - gap_pen * diffL
+            print "MAX: aa1 shorter. Score " + str(score)
+        else:
+            score = calcMax(aa2) - gap_pen * diffL
+            print "MAX: aa2 shorter. Score " + str(score)
+
+        return score
+
+def calcMax(seq):
+    matchSum = 0
+
+    for i in range(len(seq)):
+        matchSum += AA[aa_idx[seq[i]]][aa_idx[seq[i]]]
+
+    return matchSum
+
+def minScore(aa1, aa2):
+    # for each elt in the shorter sequence, look up the worst match
+    # subtract gap penalties for difference in length
+    if len(aa1) == len(aa2):
+        score1 = calcMin(aa1)
+        score2 = calcMin(aa2)
+        print "MIN: Lengths equal. Scores " + str(score1) + " and " + str(score2)
+        return min(score1, score2)
+    else:
+        diffL = abs(len(aa1) - len(aa2))
+        if len(aa1) < len(aa2):
+            score = calcMin(aa1) - gap_pen * diffL
+            print "MIN: aa1 shorter. Score " + str(score)
+        else:
+            score = calcMin(aa2) - gap_pen * diffL
+            print "MIN: aa2 shorter. Score " + str(score)
+
+        return score
+
+def calcMin(seq):
+    matchSum = 0
+
+    for i in range(len(seq)):
+        matchSum += min(AA[aa_idx[seq[i]]][:20])
+
+    return matchSum
+
 ## Amino Acid Scores BLOSUM
 AA = [
     # Ala Arg Asn Asp Cys Gln Glu Gly His Ile Leu Lys Met Phe Pro Ser Thr Trp Tyr Val STP
@@ -183,7 +237,7 @@ codons = {'TTT': 'F', 'TTC': 'F', 'TTA': 'L', 'TTG': 'L',
 def main(arg1, arg2):
     seq1 = readSeq(arg1)
     seq2 = readSeq(arg2)
-
+    
     for off in range(3):
         aa1, aa2 = readCodons(seq1, seq2, off)
 
@@ -191,6 +245,10 @@ def main(arg1, arg2):
 
         print "Offset: " + str(off)
         print "Score: " + str(score)
+
+        minS = minScore(aa1, aa2)
+        normalized = float(score - minS) / (maxScore(aa1, aa2) - minS)
+        print "Normalized Score: " + str(normalized)
 
         s1, s2, a1, a2 = traceback(seq1, seq2, aa1, aa2, off, TB)
         print s1
@@ -202,6 +260,6 @@ def main(arg1, arg2):
 
 if __name__ == "__main__":
 ##    main("mouse_HoxA13.fa", "mouse_HoxD13.fa")
-    main("human_HoxA13.fa", "mouse_HoxA13.fa")
+##    main("human_HoxA13.fa", "mouse_HoxA13.fa")
 ##    main("human_HoxA13.fa", "human_HoxD13.fa")
-##    main("human_HoxD13.fa", "mouse_HoxD13.fa")
+    main("human_HoxD13.fa", "mouse_HoxD13.fa")
