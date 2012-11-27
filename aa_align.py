@@ -4,9 +4,9 @@ import sys
 
 PTR_NONE, PTR_GAP1, PTR_GAP2, PTR_BASE = 0, 1, 2, 3
 
-def readCodons(seq1, seq2):
+def readCodons(seq1, seq2, offset):
     aa1 = ""
-    for i in range(0, len(seq1)-2, 3):
+    for i in range(offset, len(seq1)-2, 3):
         aa1 += codons[seq1[i:i+3]]
 
     aa2 = ""
@@ -15,7 +15,7 @@ def readCodons(seq1, seq2):
 
     return aa1, aa2
 
-def seqalignDP(seq1,seq2,aa1, aa2, subst_matrix,gap_pen):
+def seqalignDP(aa1, aa2):
     """return the score of the optimal Needleman-Wunsch alignment for seq1 and seq2
        Note: gap_pen should be positive (it is subtracted)
     """
@@ -32,29 +32,19 @@ def seqalignDP(seq1,seq2,aa1, aa2, subst_matrix,gap_pen):
         TB[0][j] = PTR_GAP1 # indicates a gap in aa1
 
 
-    # YOUR CODE HERE
     # Fill in the dynamic programming tables F and TB, starting at [1][1]
     # Hints: The first row and first column of the table F[i][0] and F[0][j] are dummies
-    #        (see for illustration Durbin p.21, Figure 2.5, but be careful what you
-    #         think of as rows and what you think of as columns)
     #        Hence, the bases corresponding to F[i][j] are actually seq1[i-1] and seq2[j-1].
     #        Use the dictionary base_idx to convert from the character to an index to
     #         look up entries of the substitution matrix.
-    #        To get started, you can complete and run the algorithm filling in only F,
-    #         and then figure out how to do TB.
-
-#pt a
+    
     for i in range(1, len(aa1)+1):
         for j in range(1, len(aa2)+1):
-            if aa1[i-1] == 'X' or aa2[j-1] == 'X':
-                match = -100
-            else:
-                match = F[i-1][j-1] + AA[aa_idx[aa1[i-1]]][aa_idx[aa2[j-1]]]
+            match = F[i-1][j-1] + AA[aa_idx[aa1[i-1]]][aa_idx[aa2[j-1]]]
             delete = F[i-1][j] - gap_pen
             insert = F[i][j-1] - gap_pen
             
             F[i][j] = max(match, insert, delete)
-            ##print str(i) + " " + str(j) + " " + str(F[i][j])
             if F[i][j] == match:
                 TB[i][j] = PTR_BASE
             elif F[i][j] == delete:
@@ -64,30 +54,39 @@ def seqalignDP(seq1,seq2,aa1, aa2, subst_matrix,gap_pen):
 
     return F[len(aa1)][len(aa2)], F, TB
 
-def traceback(seq1,seq2,aa1, aa2,TB):
+def traceback(seq1, seq2, aa1, aa2, offset, TB):
     s1 = ""
     s2 = ""
+
+    a1 = ""
+    a2 = ""
 
     i = len(aa1)
     j = len(aa2)
 
     while TB[i][j] != PTR_NONE:
         if TB[i][j] == PTR_BASE:
-            s1 = seq1[3*(i-1):3*i] + s1
-            s2 = seq2[3*(j-1): 3*j] + s2
-            i=i-1
-            j=j-1
+            s1 = seq1[3*(i-1)+offset : 3*i+offset] + s1
+            s2 = seq2[3*(j-1)+offset : 3*j+offset] + s2
+            a1 = aa1[i-1:i] + a1
+            a2 = aa2[j-1:j] + a2
+            i = i-1
+            j = j-1
         elif TB[i][j] == PTR_GAP1:
             s1 = '---' + s1
-            s2 = seq2[3*(j-1): 3*j] + s2
-            j=j-1
+            s2 = seq2[3*(j-1)+offset : 3*j+offset] + s2
+            a1 = '-' + a1
+            a2 = aa2[j-1:j] + a2
+            j = j-1
         elif TB[i][j] == PTR_GAP2:
-            s1 = seq1[3*(i-1):3*i] + s1
+            s1 = seq1[3*(i-1)+offset : 3*i+offset] + s1
             s2 = '---' + s2
-            i=i-1
+            a1 = aa1[i-1:i] + a1
+            a2 = '-' + a2
+            i = i-1
         else: assert False
 
-    return s1,s2
+    return s1, s2, a1, a2
 
 def readSeq(filename):
     """reads in a FASTA sequence"""
@@ -104,27 +103,28 @@ def readSeq(filename):
 
 ## Amino Acid Scores BLOSUM
 AA = [
-    # Ala Arg Asn Asp Cys Gln Glu Gly His Ile Leu Lys Met Phe Pro Ser Thr Trp Tyr Val
-    [  4, -1, -2, -2,  0, -1, -1,  0, -2, -1, -1, -1, -1, -2, -1,  1,  0, -3, -2,  0], #Ala/A
-    [ -1,  5,  0, -2, -3,  1,  0, -1,  0, -3, -2,  2, -1, -3, -2, -1, -1, -3, -2, -3], #Arg/R
-    [ -2,  0,  6,  1, -3,  0,  0,  0,  1, -3, -3,  0, -2, -3, -2,  1,  0, -4, -2, -3], #Asn/N
-    [ -2, -2,  1,  6, -3,  0,  2, -1, -1, -3, -4, -1, -3, -3, -1,  0, -1, -4, -3, -3], #Asp/D
-    [  0, -3, -3, -3,  9, -3, -4, -3, -3, -1, -1, -3, -1, -2, -3, -1, -1, -2, -2, -1], #Cys/C
-    [ -1,  1,  0,  0, -3,  5,  2, -2,  0, -3, -2,  1,  0, -3, -1,  0, -1, -2, -1, -2], #Gln/Q
-    [ -1,  0,  0,  2, -4,  2,  5, -2,  0, -3, -3,  1, -2, -3, -1,  0, -1, -2, -1, -2], #Glu/E
-    [  0, -2,  0, -1, -3, -2, -2,  6, -2, -4, -4, -2, -3, -3, -2,  0, -2, -2, -3, -3], #Gly/G
-    [ -2,  0,  1, -1, -3,  0,  0, -2,  8, -3, -3, -1, -2, -1, -2, -1, -2, -2,  2, -3], #His/H
-    [ -1, -3, -3, -3, -1, -3, -3, -4, -3,  4,  2, -3,  1,  0, -3, -2, -1, -2, -1,  1], #Ile/I
-    [ -1, -2, -3, -4, -1, -2, -3, -4, -3,  2,  4, -2,  2,  0, -3, -2, -1, -2, -1,  1], #Leu/L
-    [ -1,  2,  0, -1, -3,  1,  1, -2, -1, -3, -2,  5, -1, -3, -1,  0, -1, -3, -2, -2], #Lys/K
-    [ -1, -1, -2, -3, -1,  0, -2, -3, -2,  1,  2, -1,  5,  0, -2, -1, -1, -1, -1,  1], #Met/M
-    [ -2, -3, -3, -3, -2, -3, -3, -3, -1,  0,  0, -3,  0,  6, -4, -2, -2,  1,  3, -1], #Phe/F
-    [ -1, -2, -2, -1, -3, -1, -1, -2, -2, -3, -3, -1, -2, -4,  7, -1, -1, -4, -3, -2], #Pro/P
-    [  1, -1,  1,  0, -1,  0,  0,  0, -1, -2, -2,  0, -1, -2, -1,  4,  1, -3, -2, -2], #Ser/S
-    [  0, -1,  0, -1, -1, -1, -1, -2, -2, -1, -1, -1, -1, -2, -1,  1,  5, -2, -2,  0], #Thr/T
-    [ -3, -3, -4, -4, -2, -2, -3, -2, -2, -3, -2, -3, -1,  1, -4, -3, -2, 11,  2, -3], #Trp/W
-    [ -2, -2, -2, -3, -2, -1, -2, -3,  2, -1, -1, -2, -1,  3, -3, -2, -2,  2,  7, -1], #Tyr/Y
-    [  0, -3, -3, -3, -1, -2, -2, -3, -3,  3,  1, -2,  1, -1, -2, -2,  0, -3, -1,  4], #Val/V
+    # Ala Arg Asn Asp Cys Gln Glu Gly His Ile Leu Lys Met Phe Pro Ser Thr Trp Tyr Val STP
+    [  4, -1, -2, -2,  0, -1, -1,  0, -2, -1, -1, -1, -1, -2, -1,  1,  0, -3, -2,  0, -50], #Ala/A
+    [ -1,  5,  0, -2, -3,  1,  0, -1,  0, -3, -2,  2, -1, -3, -2, -1, -1, -3, -2, -3, -50], #Arg/R
+    [ -2,  0,  6,  1, -3,  0,  0,  0,  1, -3, -3,  0, -2, -3, -2,  1,  0, -4, -2, -3, -50], #Asn/N
+    [ -2, -2,  1,  6, -3,  0,  2, -1, -1, -3, -4, -1, -3, -3, -1,  0, -1, -4, -3, -3, -50], #Asp/D
+    [  0, -3, -3, -3,  9, -3, -4, -3, -3, -1, -1, -3, -1, -2, -3, -1, -1, -2, -2, -1, -50], #Cys/C
+    [ -1,  1,  0,  0, -3,  5,  2, -2,  0, -3, -2,  1,  0, -3, -1,  0, -1, -2, -1, -2, -50], #Gln/Q
+    [ -1,  0,  0,  2, -4,  2,  5, -2,  0, -3, -3,  1, -2, -3, -1,  0, -1, -2, -1, -2, -50], #Glu/E
+    [  0, -2,  0, -1, -3, -2, -2,  6, -2, -4, -4, -2, -3, -3, -2,  0, -2, -2, -3, -3, -50], #Gly/G
+    [ -2,  0,  1, -1, -3,  0,  0, -2,  8, -3, -3, -1, -2, -1, -2, -1, -2, -2,  2, -3, -50], #His/H
+    [ -1, -3, -3, -3, -1, -3, -3, -4, -3,  4,  2, -3,  1,  0, -3, -2, -1, -2, -1,  1, -50], #Ile/I
+    [ -1, -2, -3, -4, -1, -2, -3, -4, -3,  2,  4, -2,  2,  0, -3, -2, -1, -2, -1,  1, -50], #Leu/L
+    [ -1,  2,  0, -1, -3,  1,  1, -2, -1, -3, -2,  5, -1, -3, -1,  0, -1, -3, -2, -2, -50], #Lys/K
+    [ -1, -1, -2, -3, -1,  0, -2, -3, -2,  1,  2, -1,  5,  0, -2, -1, -1, -1, -1,  1, -50], #Met/M
+    [ -2, -3, -3, -3, -2, -3, -3, -3, -1,  0,  0, -3,  0,  6, -4, -2, -2,  1,  3, -1, -50], #Phe/F
+    [ -1, -2, -2, -1, -3, -1, -1, -2, -2, -3, -3, -1, -2, -4,  7, -1, -1, -4, -3, -2, -50], #Pro/P
+    [  1, -1,  1,  0, -1,  0,  0,  0, -1, -2, -2,  0, -1, -2, -1,  4,  1, -3, -2, -2, -50], #Ser/S
+    [  0, -1,  0, -1, -1, -1, -1, -2, -2, -1, -1, -1, -1, -2, -1,  1,  5, -2, -2,  0, -50], #Thr/T
+    [ -3, -3, -4, -4, -2, -2, -3, -2, -2, -3, -2, -3, -1,  1, -4, -3, -2, 11,  2, -3, -50], #Trp/W
+    [ -2, -2, -2, -3, -2, -1, -2, -3,  2, -1, -1, -2, -1,  3, -3, -2, -2,  2,  7, -1, -50], #Tyr/Y
+    [  0, -3, -3, -3, -1, -2, -2, -3, -3,  3,  1, -2,  1, -1, -2, -2,  0, -3, -1,  4, -50], #Val/V
+    [-50, -50, -50, -50, -50, -50, -50, -50, -50, -50, -50, -50, -50, -50, -50, -50, -50, -50, -50, -50, 50] #STP/X
     ]
 
 gap_pen = 12
@@ -132,7 +132,7 @@ gap_pen = 12
 aa_idx = {'A': 0, 'R': 1, 'N': 2, 'D': 3, 'C': 4,
           'Q': 5, 'E': 6, 'G': 7, 'H': 8, 'I': 9,
           'L': 10, 'K': 11, 'M': 12, 'F': 13, 'P': 14,
-          'S': 15, 'T': 16, 'W': 17, 'Y': 18, 'V': 19}
+          'S': 15, 'T': 16, 'W': 17, 'Y': 18, 'V': 19, 'X': 20}
 
 codons = {'TTT': 'F', 'TTC': 'F', 'TTA': 'L', 'TTG': 'L',
           'TCT': 'S', 'TCC': 'S', 'TCA': 'S', 'TCG': 'S',
@@ -181,35 +181,27 @@ codons = {'TTT': 'F', 'TTC': 'F', 'TTA': 'L', 'TTG': 'L',
 ##          'GGT': 'Gly', 'GGC': 'Gly', 'GGA': 'Gly', 'GGG': 'Gly'}
 
 def main(arg1, arg2):
-    # parse commandline
-##    if len(sys.argv) < 3:
-##        print "you must call program as: python ps1-seqalign.py <FASTA 1> <FASTA 2>"
-##        sys.exit(1)
-##
-##    file1 = sys.argv[1]
-##    file2 = sys.argv[2]
-
     seq1 = readSeq(arg1)
     seq2 = readSeq(arg2)
 
-    aa1, aa2 = readCodons(seq1, seq2)
-##    seq1 = "AGGTGAT"
-##    seq2 = "AGTAA"
-##    seq1 = arg1
-##    seq2 = arg2
+    for off in range(3):
+        aa1, aa2 = readCodons(seq1, seq2, off)
 
-    score, F, TB = seqalignDP(seq1,seq2,aa1, aa2, AA, gap_pen)
+        score, F, TB = seqalignDP(aa1, aa2)
 
-    print >> sys.stderr, score
+        print "Offset: " + str(off)
+        print "Score: " + str(score)
 
-    s1, s2 = traceback(seq1, seq2, aa1, aa2, TB)
-    print s1
-    print s2
+        s1, s2, a1, a2 = traceback(seq1, seq2, aa1, aa2, off, TB)
+        print s1
+        print s2
+        print "------------"
+        print a1
+        print a2
+        print ""
 
 if __name__ == "__main__":
 ##    main("mouse_HoxA13.fa", "mouse_HoxD13.fa")
 ##    main("human_HoxA13.fa", "mouse_HoxA13.fa")
-##    main("human_HoxA13.fa", "human_HoxD13.fa")
-    main("human_HoxD13.fa", "mouse_HoxD13.fa")
-##    main("AGAGT", "AGGC")
-##    main("AGGT", "AGGA")
+    main("human_HoxA13.fa", "human_HoxD13.fa")
+##    main("human_HoxD13.fa", "mouse_HoxD13.fa")
