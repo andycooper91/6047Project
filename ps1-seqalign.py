@@ -121,10 +121,10 @@ def main(arg1, arg2):
 ##    file1 = sys.argv[1]
 ##    file2 = sys.argv[2]
 
-##    seq1 = readSeq(arg1)
-##    seq2 = readSeq(arg2)
-    seq1 = "TTTTTTT"
-    seq2 = "TTTTTTT"
+    seq1 = readSeq(arg1)
+    seq2 = readSeq(arg2)
+##    seq1 = "TTTTTTT"
+##    seq2 = "TTTTTTT"
 ##    seq1 = "AGGTGAT"
 ##    seq2 = "AGTAA"
 ##    seq1 = arg1
