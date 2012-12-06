@@ -4,13 +4,13 @@ import sys
 
 PTR_NONE, PTR_GAP1, PTR_GAP2, PTR_BASE = 0, 1, 2, 3
 
-def readCodons(seq1, seq2, offset):
+def readCodons(seq1, seq2, offset1, offset2):
     aa1 = ""
-    for i in range(offset, len(seq1)-2, 3):
+    for i in range(offset1, len(seq1)-2, 3):
         aa1 += codons[seq1[i:i+3]]
 
     aa2 = ""
-    for j in range(0, len(seq2)-2, 3):
+    for j in range(offset2, len(seq2)-2, 3):
         aa2 += codons[seq2[j:j+3]]
 
     return aa1, aa2
@@ -56,7 +56,7 @@ def seqalignDP(aa1, aa2):
 
     return F[len(aa1)][len(aa2)], F, TB
 
-def traceback(seq1, seq2, aa1, aa2, offset, F, TB):
+def traceback(seq1, seq2, aa1, aa2, offset1, offset2, F, TB):
     s1 = ""
     s2 = ""
 
@@ -77,20 +77,20 @@ def traceback(seq1, seq2, aa1, aa2, offset, F, TB):
 
     while TB[i][j] != PTR_NONE:
         if TB[i][j] == PTR_BASE:
-            s1 = seq1[3*(i-1)+offset : 3*i+offset] + s1
-            s2 = seq2[3*(j-1)+offset : 3*j+offset] + s2
+            s1 = seq1[3*(i-1)+offset1 : 3*i+offset1] + s1
+            s2 = seq2[3*(j-1)+offset2 : 3*j+offset2] + s2
             a1 = aa1[i-1:i] + a1
             a2 = aa2[j-1:j] + a2
             i = i-1
             j = j-1
         elif TB[i][j] == PTR_GAP1:
             s1 = '---' + s1
-            s2 = seq2[3*(j-1)+offset : 3*j+offset] + s2
+            s2 = seq2[3*(j-1)+offset2 : 3*j+offset2] + s2
             a1 = '-' + a1
             a2 = aa2[j-1:j] + a2
             j = j-1
         elif TB[i][j] == PTR_GAP2:
-            s1 = seq1[3*(i-1)+offset : 3*i+offset] + s1
+            s1 = seq1[3*(i-1)+offset1 : 3*i+offset1] + s1
             s2 = '---' + s2
             a1 = aa1[i-1:i] + a1
             a2 = '-' + a2
@@ -223,24 +223,25 @@ def main(arg1, arg2):
     seq1 = readSeq(arg1)
     seq2 = readSeq(arg2)
     
-    for off in range(3):
-        aa1, aa2 = readCodons(seq1, seq2, off)
+    for off1 in range(3):
+        for off2 in range(3):
+            aa1, aa2 = readCodons(seq1, seq2, off1, off2)
 
-        score, F, TB = seqalignDP(aa1, aa2)
+            score, F, TB = seqalignDP(aa1, aa2)
 
-        print "Offset: " + str(off)
-        print "Score: " + str(score)
+            print "Offset 1: " + str(off1) + ", Offset2: " + str(off2)
+            print "Score: " + str(score)
 
-        normalized = float(score) / (maxScore(aa1, aa2))
-        print "Normalized Score: " + str(normalized)
+            normalized = float(score) / (maxScore(aa1, aa2))
+            print "Normalized Score: " + str(normalized)
 
-        s1, s2, a1, a2 = traceback(seq1, seq2, aa1, aa2, off, F, TB)
-        print s1
-        print s2
-        print "------------"
-        print a1
-        print a2
-        print ""
+            s1, s2, a1, a2 = traceback(seq1, seq2, aa1, aa2, off1, off2, F, TB)
+            print s1
+            print s2
+            print "------------"
+            print a1
+            print a2
+            print ""
 
 if __name__ == "__main__":
 ##    main("mouse_HoxA13.fa", "mouse_HoxD13.fa")
