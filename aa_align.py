@@ -263,4 +263,6 @@ if __name__ == "__main__":
 ##    main("mouse_HoxA13.fa", "mouse_HoxD13.fa")
 ##    main("human_HoxA13.fa", "mouse_HoxA13.fa")
 ##    main("human_HoxA13.fa", "human_HoxD13.fa")
-    main("human_HoxD13.fa", "mouse_HoxD13.fa")
+##    main("human_HoxD13.fa", "mouse_HoxD13.fa")
+    main("rat_HoxA13.fa", "mouse_HoxA13.fa")
+##    main("rat_HoxA13.fa", "human_HoxA13.fa")
